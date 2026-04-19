@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amenify Support</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 0 1.5rem;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(37,99,235,0.35);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      opacity: 0.85;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #4ade80;
+      border-radius: 50%;
+    }
+
+    .new-chat-btn {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+
+    .new-chat-btn:hover { background: rgba(255,255,255,0.25); }
+
+    #chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .welcome {
+      text-align: center;
+      padding: 3rem 1rem 1rem;
+      color: var(--text-muted);
+      margin: auto;
+    }
+
+    .welcome h2 {
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+      font-size: 1.4rem;
+    }
+
+    .welcome p {
+      font-size: 0.9rem;
+      max-width: 380px;
+      margin: 0 auto 1.5rem;
+      line-height: 1.6;
+    }
+
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    .suggestion-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.82rem;
+      color: var(--primary);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      font-family: inherit;
+    }
+
+    .suggestion-chip:hover {
+      background: #eff6ff;
+      border-color: var(--primary);
+    }
+
+    .message-row {
+      display: flex;
+      gap: 0.7rem;
+      max-width: 780px;
+      width: 100%;
+      align-self: flex-start;
+    }
+
+    .message-row.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.78rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .avatar.bot { background: var(--primary); color: #fff; }
+    .avatar.user { background: #e2e8f0; color: var(--text); }
+
+    .bubble-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      max-width: calc(100% - 42px);
+    }
+
+    .bubble {
+      padding: 0.7rem 0.95rem;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      line-height: 1.65;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .message-row.bot .bubble {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px 12px 12px 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .message-row.user .bubble {
+      background: var(--primary);
+      color: #fff;
+      border-radius: 12px 4px 12px 12px;
+    }
+
+    .sources {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      padding-top: 0.2rem;
+    }
+
+    .source-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-right: 0.2rem;
+    }
+
+    .source-link {
+      font-size: 0.72rem;
+      color: var(--primary);
+      text-decoration: none;
+      background: #eff6ff;
+      padding: 0.18rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid #bfdbfe;
+      transition: background 0.15s;
+    }
+
+    .source-link:hover { background: #dbeafe; }
+
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0.7rem 0.95rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px 12px 12px 12px;
+      box-shadow: var(--shadow);
+      width: fit-content;
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    #input-area {
+      padding: 0.75rem 1rem 0.5rem;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+
+    #message-input {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.88rem;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      max-height: 140px;
+      min-height: 42px;
+      line-height: 1.5;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      color: var(--text);
+    }
+
+    #message-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    #send-btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      width: 42px;
+      height: 42px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    #send-btn:hover { background: var(--primary-dark); }
+    #send-btn:active { transform: scale(0.94); }
+    #send-btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+    #send-btn svg { width: 17px; height: 17px; }
+
+    .hint {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      padding: 0.2rem 1rem 0.55rem;
+      background: var(--surface);
+      text-align: center;
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 600px) {
+      #chat-area { padding: 1rem 0.75rem; }
+      .message-row { max-width: 100%; }
+    }
+
+    .message-row.bot .bubble > p { margin-bottom: 0.5em; }
+    .message-row.bot .bubble > p:last-child { margin-bottom: 0; }
+    .message-row.bot .bubble ul,
+    .message-row.bot .bubble ol { padding-left: 1.4em; margin-bottom: 0.5em; }
+    .message-row.bot .bubble li { margin-bottom: 0.2em; }
+    .message-row.bot .bubble strong { font-weight: 700; }
+    .message-row.bot .bubble em { font-style: italic; }
+    .message-row.bot .bubble h1,
+    .message-row.bot .bubble h2,
+    .message-row.bot .bubble h3 { font-size: 1em; font-weight: 700; margin: 0.5em 0 0.25em; }
+    .message-row.bot .bubble code {
+      background: #f1f5f9;
+      padding: 0.1em 0.35em;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.84em;
+    }
+    .message-row.bot .bubble pre {
+      background: #f1f5f9;
+      padding: 0.65em 0.85em;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin-bottom: 0.5em;
+    }
+    .message-row.bot .bubble pre code { background: none; padding: 0; }
+    .message-row.bot .bubble a { color: var(--primary); text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🏠</div>
+      <span>Amenify Support</span>
+    </div>
+    <div class="header-right">
+      <div class="status">
+        <div class="status-dot"></div>
+        <span>Online</span>
+      </div>
+      <button class="new-chat-btn" onclick="newChat()">New Chat</button>
+    </div>
+  </header>
+
+  <div id="chat-area" role="log" aria-live="polite" aria-label="Chat messages" aria-relevant="additions">
+    <div class="welcome" id="welcome">
+      <h2>Hi! I'm Amenify's Support Bot</h2>
+      <p>Ask me anything about Amenify's services, features, or how to get started.</p>
+      <div class="suggestions">
+        <button class="suggestion-chip" onclick="useChip(this)">What is Amenify?</button>
+        <button class="suggestion-chip" onclick="useChip(this)">What services do you offer?</button>
+        <button class="suggestion-chip" onclick="useChip(this)">How do I get started?</button>
+        <button class="suggestion-chip" onclick="useChip(this)">Who are your partners?</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="input-area">
+    <label for="message-input" class="sr-only">Type your message to Amenify support</label>
+    <textarea
+      id="message-input"
+      placeholder="Ask something about Amenify..."
+      rows="1"
+      aria-label="Type your message to Amenify support"
+      aria-multiline="true"
+      onkeydown="handleKey(event)"
+      oninput="autoResize(this)"
+    ></textarea>
+    <button id="send-btn" onclick="sendMessage()" title="Send message" aria-label="Send message">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </div>
+  <div class="hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line</div>
+
+  <script>
+    marked.setOptions({ breaks: true, gfm: true });
+
+    let sessionId = null;
+    let conversationHistory = [];
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+    }
+
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    }
+
+    function scrollToBottom() {
+      const area = document.getElementById('chat-area');
+      area.scrollTop = area.scrollHeight;
+    }
+
+    function removeWelcome() {
+      const w = document.getElementById('welcome');
+      if (w) w.remove();
+    }
+
+    function addMessage(text, isUser, sources = []) {
+      removeWelcome();
+      const area = document.getElementById('chat-area');
+
+      const row = document.createElement('div');
+      row.className = `message-row ${isUser ? 'user' : 'bot'}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = `avatar ${isUser ? 'user' : 'bot'}`;
+      avatar.textContent = isUser ? 'You' : 'A';
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'bubble-wrapper';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      if (isUser) {
+        bubble.textContent = text;
+      } else {
+        bubble.innerHTML = DOMPurify.sanitize(marked.parse(text));
+      }
+      wrapper.appendChild(bubble);
+
+      if (!isUser && sources.length > 0) {
+        const srcRow = document.createElement('div');
+        srcRow.className = 'sources';
+        const label = document.createElement('span');
+        label.className = 'source-label';
+        label.textContent = 'Sources:';
+        srcRow.appendChild(label);
+        sources.forEach(url => {
+          const a = document.createElement('a');
+          a.className = 'source-link';
+          a.href = url;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          try {
+            const path = new URL(url).pathname.replace(/^\//, '').replace(/\/$/, '');
+            a.textContent = path || 'amenify.com';
+          } catch {
+            a.textContent = url;
+          }
+          srcRow.appendChild(a);
+        });
+        wrapper.appendChild(srcRow);
+      }
+
+      row.appendChild(avatar);
+      row.appendChild(wrapper);
+      area.appendChild(row);
+      scrollToBottom();
+    }
+
+    function showTyping() {
+      removeWelcome();
+      const area = document.getElementById('chat-area');
+      const row = document.createElement('div');
+      row.className = 'message-row bot';
+      row.id = 'typing-row';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar bot';
+      avatar.textContent = 'A';
+
+      const indicator = document.createElement('div');
+      indicator.className = 'typing-indicator';
+      for (let i = 0; i < 3; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'typing-dot';
+        indicator.appendChild(dot);
+      }
+
+      row.appendChild(avatar);
+      row.appendChild(indicator);
+      area.appendChild(row);
+      scrollToBottom();
+    }
+
+    function removeTyping() {
+      const row = document.getElementById('typing-row');
+      if (row) row.remove();
+    }
+
+    function useChip(btn) {
+      const input = document.getElementById('message-input');
+      input.value = btn.textContent;
+      input.focus();
+      sendMessage();
+    }
+
+    async function fetchWithRetry(url, options, maxRetries = 3) {
+      let lastErr;
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        if (attempt > 0) {
+          await new Promise(r => setTimeout(r, Math.pow(2, attempt - 1) * 1000));
+        }
+        try {
+          const res = await fetch(url, options);
+          if (res.status === 429 && attempt < maxRetries - 1) {
+            lastErr = { status: 429 };
+            continue;
+          }
+          return res;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      throw lastErr || new Error('Request failed');
+    }
+
+    function statusMessage(status) {
+      if (status === 429) return 'Rate limit reached. Please wait a moment and try again.';
+      if (status === 503) return 'Service temporarily unavailable. Please try again shortly.';
+      if (status >= 500) return 'A server error occurred. Your message has been restored — please try again.';
+      return 'Something went wrong. Your message has been restored — please try again.';
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('message-input');
+      const btn = document.getElementById('send-btn');
+      const message = input.value.trim();
+      if (!message) return;
+
+      const savedMessage = message;
+
+      input.value = '';
+      input.style.height = 'auto';
+      btn.disabled = true;
+
+      addMessage(message, true);
+      showTyping();
+
+      try {
+        const res = await fetchWithRetry('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, session_id: sessionId, history: conversationHistory }),
+        });
+
+        if (!res.ok) throw { status: res.status };
+        const data = await res.json();
+
+        sessionId = data.session_id;
+        conversationHistory = data.history;
+
+        removeTyping();
+        addMessage(data.response, false, data.sources);
+      } catch (err) {
+        removeTyping();
+        const msg = err && err.status
+          ? statusMessage(err.status)
+          : 'Connection failed. Your message has been restored — please try again.';
+        addMessage(msg, false);
+        input.value = savedMessage;
+        autoResize(input);
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+    }
+
+    async function newChat() {
+      sessionId = null;
+      conversationHistory = [];
+
+      const area = document.getElementById('chat-area');
+      area.innerHTML = `
+        <div class="welcome" id="welcome">
+          <h2>Hi! I'm Amenify's Support Bot</h2>
+          <p>Ask me anything about Amenify's services, features, or how to get started.</p>
+          <div class="suggestions">
+            <button class="suggestion-chip" onclick="useChip(this)">What is Amenify?</button>
+            <button class="suggestion-chip" onclick="useChip(this)">What services do you offer?</button>
+            <button class="suggestion-chip" onclick="useChip(this)">How do I get started?</button>
+            <button class="suggestion-chip" onclick="useChip(this)">Who are your partners?</button>
+          </div>
+        </div>`;
+
+      document.getElementById('message-input').focus();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('message-input').focus();
+    });
+  </script>
+</body>
+</html>
